@@ -10,3 +10,6 @@ git commit -m "Fix: Movido app.py, requirements y utilidades a la raíz del repo
 
 # 3. Empujamos los cambios directo a GitHub
 git push origin main
+git add app.py src/modules/operations/models.py
+git commit -m "Módulo Operativo e Higiene: Añadido Checklist HSE y campos de volumen real vs diseño"
+git push origin main
