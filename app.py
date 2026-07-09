@@ -3,31 +3,21 @@ import os
 import sys
 import streamlit as st
 
-# --- BLINDAJE ULTRA-DEFINITIVO PARA RUTAS EN SERVIDORES (STREAMLIT CLOUD) ---
-# Encontramos la ruta absoluta de la carpeta 'src'
-ruta_actual = os.path.dirname(os.path.abspath(__file__))
-ruta_src = os.path.join(ruta_actual, "src")
-
-# Forzamos a Python a insertar 'src' al principio de todo su mapa de búsqueda
-if ruta_src not in sys.path:
-    sys.path.insert(0, ruta_src)
-if ruta_actual not in sys.path:
-    sys.path.insert(0, ruta_actual)
-# -----------------------------------------------------------------------------
+# --- CONFIGURACIÓN DE ENTORNO PARA PRODUCCIÓN (STREAMLIT CLOUD) ---
+# Forzamos la inclusión de la raíz para resolver módulos absolutos 'src.*'
+directorio_raiz = os.path.dirname(os.path.abspath(__file__))
+if directorio_raiz not in sys.path:
+    sys.path.append(directorio_raiz)
+# ------------------------------------------------------------------
 
 import math
-
-# Al inyectar 'src' con el índice 0 en el path, Python busca directamente desde adentro de src.
-# Por lo tanto, llamamos a los módulos de forma limpia y directa:
-from database.connection import engine, Base, SessionLocal
-from modules.operations.models import Pozo, Intervencion
-from modules.pumping.calculator import CementCalculator
-from modules.pumping.services import PumpingService
+# SOLUCIÓN DEFINITIVA: Importaciones absolutas consistentes con la estructura del repositorio
+from src.database.connection import engine, Base, SessionLocal
+from src.modules.operations.models import Pozo, Intervencion
+from src.modules.pumping.calculator import CementCalculator
+from src.modules.pumping.services import PumpingService
 
 # Crear las tablas automáticamente si no existen (SQLite local o Postgres)
-Base.metadata.create_all(bind=engine)
-
-# ... (Todo el resto de tu código de Streamlit hacia abajo queda exactamente igual)
 Base.metadata.create_all(bind=engine)
 
 st.set_page_config(
