@@ -3,15 +3,23 @@ import os
 import sys
 import streamlit as st
 
-# ---- TRUCO PARA RECONOCER LA CARPETA SRC EN SERVIDORES Y EN LA NUBE ----
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+# --- BLINDAJE DE RUTAS PARA ENTORNO DE PRODUCCIÓN (STREAMLIT CLOUD) ---
+# Agrega tanto la raíz del proyecto como la carpeta 'src' al path de Python
+ruta_raiz = os.path.abspath(os.path.dirname(__file__))
+ruta_src = os.path.join(ruta_raiz, "src")
+
+if ruta_raiz not in sys.path:
+    sys.path.append(ruta_raiz)
+if ruta_src not in sys.path:
+    sys.path.append(ruta_src)
 # -----------------------------------------------------------------------
 
 import math
-from src.database.connection import engine, Base, SessionLocal
-from src.modules.operations.models import Pozo, Intervencion
-from src.modules.pumping.calculator import CementCalculator
-from src.modules.pumping.services import PumpingService
+# SOLUCIÓN: Quitamos el prefijo 'src.' para que la nube resuelva las rutas de forma directa
+from database.connection import engine, Base, SessionLocal
+from modules.operations.models import Pozo, Intervencion
+from modules.pumping.calculator import CementCalculator
+from modules.pumping.services import PumpingService
 
 # Crear las tablas automáticamente si no existen (SQLite local o Postgres)
 Base.metadata.create_all(bind=engine)
@@ -54,7 +62,6 @@ with st.sidebar.form("form_pozo"):
             db.close()
 
 # --- PANEL CENTRAL: NAVEGACIÓN MULTISERVICIO ---
-# Organizamos por pestañas para expandir fácilmente a Estimulación/Fractura y P&A
 tab_cementacion, tab_estimulacion, tab_abandono = st.tabs([
     "🧪 Cementación de Pozos", 
     "⚡ Estimulación y Fractura", 
@@ -134,14 +141,14 @@ with tab_cementacion:
                         st.error(f"Error en los parámetros técnicos: {e}")
 
 # =====================================================================
-# VISTA 2: ESTIMULACIÓN Y FRACTURA (Siguiente Fase)
+# VISTA 2: ESTIMULACIÓN Y FRACTURA
 # =====================================================================
 with tab_estimulacion:
     st.subheader("Simulación de Etapas de Fractura Hidráulica e Inyección de Gel")
     st.info("💡 Módulo listo para recibir la lógica de concentraciones de apuntalante y geles portadores.")
 
 # =====================================================================
-# VISTA 3: ABANDONO DE POZOS (Siguiente Fase)
+# VISTA 3: ABANDONO DE POZOS
 # =====================================================================
 with tab_abandono:
     st.subheader("Verificación de Protocolos de Aislamiento y Tapones de Cemento (P&A)")
