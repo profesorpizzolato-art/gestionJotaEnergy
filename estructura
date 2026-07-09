@@ -1,6 +1,18 @@
-gestionjotaenergy/
-├── src/
-│   ├── __init__.py          <--- ESTE
-│   ├── database/
-│   │   ├── __init__.py      <--- ESTE
-│   │   └── connection.py
+gestionJotaEnergy/              <-- ESTA ES LA RAÍZ REAL
+├── app.py                      <-- El archivo principal va ACÁ, afuera
+├── requirements.txt            <-- Va ACÁ afuera
+├── README.md
+└── src/                        <-- Adentro de src SOLO van los módulos lógicos
+    ├── __init__.py
+    ├── database/
+    │   ├── __init__.py
+    │   └── connection.py
+    └── modules/
+        ├── __init__.py
+        ├── operations/
+        │   ├── __init__.py
+        │   └── models.py
+        └── pumping/
+            ├── __init__.py
+            ├── calculator.py
+            └── services.py
