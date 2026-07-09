@@ -30,3 +30,16 @@ git push origin main
 git add app.py
 git commit -m "Fix: Implementadas rutas absolutas con src. combinadas con sys.path para Streamlit Cloud"
 git push origin main
+# 1. Mové app.py y requirements.txt a la raíz real
+git mv src/app.py ./
+git mv src/requirements.txt ./
+git mv src/README.md ./ 2>/dev/null || true
+
+# 2. Si tenías carpetas como database u operations sueltas en src, dejalas ahí,
+# pero asegurate de que app.py ahora esté afuera.
+
+# 3. Guardá los cambios del movimiento de archivos
+git commit -m "Fix: Movidos app.py y requirements a la raíz del repositorio"
+
+# 4. Subilo a GitHub
+git push origin main
