@@ -4,7 +4,7 @@ import sys
 import streamlit as st
 
 # --- BLINDAJE DE RUTAS PARA ENTORNO DE PRODUCCIÓN (STREAMLIT CLOUD) ---
-# Agrega tanto la raíz del proyecto como la carpeta 'src' al path de Python
+# Agrega tanto la raíz del proyecto como la carpeta 'src' al path de Python para evitar fallos de importación
 ruta_raiz = os.path.abspath(os.path.dirname(__file__))
 ruta_src = os.path.join(ruta_raiz, "src")
 
@@ -15,11 +15,11 @@ if ruta_src not in sys.path:
 # -----------------------------------------------------------------------
 
 import math
-# SOLUCIÓN: Quitamos el prefijo 'src.' para que la nube resuelva las rutas de forma directa
-from database.connection import engine, Base, SessionLocal
-from modules.operations.models import Pozo, Intervencion
-from modules.pumping.calculator import CementCalculator
-from modules.pumping.services import PumpingService
+# SOLUCIÓN DE RAÍZ: Usamos importaciones absolutas apoyadas por el ajuste de path superior
+from src.database.connection import engine, Base, SessionLocal
+from src.modules.operations.models import Pozo, Intervencion
+from src.modules.pumping.calculator import CementCalculator
+from src.modules.pumping.services import PumpingService
 
 # Crear las tablas automáticamente si no existen (SQLite local o Postgres)
 Base.metadata.create_all(bind=engine)
