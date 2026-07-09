@@ -39,19 +39,27 @@ with col1:
     st.markdown("---")
     st.subheader("🧪 Propiedades de la Mezcla")
     rendimiento = st.number_input("Rendimiento del Cemento (ft³/saco)", min_value=0.5, value=1.18, step=0.01)
+    agua_req = st.number_input("Agua Requerida (gal/saco)", min_value=0.0, value=5.2, step=0.1)
+    dosis_retardador = st.number_input("Dosis de Aditivo/Retardador (gal/saco - GPS)", min_value=0.0, value=0.05, step=0.01)
 
 with col2:
     st.subheader("📊 Resultados del Diseño")
     
     if st.button("Calcular Volúmenes e Insumos"):
         try:
-            # Ejecutar cálculos del motor
+            # 1. Ejecutar cálculos base del motor
             vol_anular_bbl = CementCalculator.calcular_volumen_espacio_anular(od_casing, id_pozo, longitud)
             sacos_totales = CementCalculator.calcular_requerimiento_sacos(vol_anular_bbl, rendimiento)
+            
+            # 2. Ejecutar nuevos cálculos de fluidos y aditivos
+            agua_total_bbl = CementCalculator.calcular_agua_mezcla(sacos_totales, agua_req)
+            aditivo_total_gal = CementCalculator.calcular_aditivo_liquido(sacos_totales, dosis_retardador)
             
             # Mostrar resultados usando tarjetas visuales (KPIs)
             st.metric(label="Volumen Total de Lechada Requerido", value=f"{vol_anular_bbl} bbl")
             st.metric(label="Cantidad de Sacos de Cemento", value=f"{sacos_totales} Sks")
+            st.metric(label="Agua de Mezcla Total Requerida", value=f"{agua_total_bbl} bbl")
+            st.metric(label="Aditivo Líquido Necesario", value=f"{aditivo_total_gal} gal")
             
             st.success("✅ Cálculos realizados bajo estándares API de cementación.")
             
