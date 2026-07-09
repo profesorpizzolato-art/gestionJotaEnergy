@@ -15,3 +15,6 @@ git push origin main
 git add src/modules/pumping/services.py app.py
 git commit -m "Feat: Conectada la UI de cálculos de bombeo con la base de datos relacional"
 git push origin main
+git add app.py
+git commit -m "Fix: Solucionado path de modulos y agregada interfaz multi-servicio"
+git push origin main
