@@ -9,3 +9,6 @@ git commit -m "Feat: Implementado módulo de cálculo de cementación con colore
 
 # 4. Subilos a tu repositorio remoto en GitHub
 git push origin main
+git add src/modules/pumping/calculator.py app.py
+git commit -m "Feat: Expandido calculador con agua de mezcla y aditivos GPS"
+git push origin main
