@@ -1,7 +1,7 @@
 # src/modules/pumping/services.py
 from sqlalchemy.orm import Session
-from src.modules.operations.models import Intervencion
-# Nota: Si extendemos los modelos para incluir consumos, los importaríamos acá
+# SOLUCIÓN: Quitamos el prefijo 'src.' para que sea consistente con la estructura de la nube
+from modules.operations.models import Intervencion
 
 class PumpingService:
     """
