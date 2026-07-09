@@ -18,3 +18,12 @@ git push origin main
 git add app.py
 git commit -m "Fix: Solucionado path de modulos y agregada interfaz multi-servicio"
 git push origin main
+# 1. Agrega el app.py corregido y los inicializadores si no estaban
+git add app.py
+git add src/__init__.py src/database/__init__.py src/modules/__init__.py 2>/dev/null || git add app.py
+
+# 2. Crea el commit del fix definitivo
+git commit -m "Fix: Eliminado prefijo src de imports para corregir crash en linea 11"
+
+# 3. Súbelo a GitHub
+git push origin main
