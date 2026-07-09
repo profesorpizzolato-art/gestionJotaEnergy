@@ -12,3 +12,6 @@ git push origin main
 git add src/modules/pumping/calculator.py app.py
 git commit -m "Feat: Expandido calculador con agua de mezcla y aditivos GPS"
 git push origin main
+git add src/modules/pumping/services.py app.py
+git commit -m "Feat: Conectada la UI de cálculos de bombeo con la base de datos relacional"
+git push origin main
