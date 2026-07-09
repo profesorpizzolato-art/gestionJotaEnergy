@@ -27,3 +27,6 @@ git commit -m "Fix: Eliminado prefijo src de imports para corregir crash en line
 
 # 3. Súbelo a GitHub
 git push origin main
+git add app.py
+git commit -m "Fix: Implementadas rutas absolutas con src. combinadas con sys.path para Streamlit Cloud"
+git push origin main
