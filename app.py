@@ -11,7 +11,7 @@ if directorio_raiz not in sys.path:
 # ------------------------------------------------------------------
 
 import math
-# SOLUCIÓN DEFINITIVA: Importaciones absolutas consistentes con la estructura del repositorio
+# Importaciones absolutas consistentes con la estructura del repositorio
 from src.database.connection import engine, Base, SessionLocal
 from src.modules.operations.models import Pozo, Intervencion
 from src.modules.pumping.calculator import CementCalculator
