@@ -3,25 +3,31 @@ import os
 import sys
 import streamlit as st
 
-# --- BLINDAJE DE RUTAS PARA ENTORNO DE PRODUCCIÓN (STREAMLIT CLOUD) ---
-# Agrega tanto la raíz del proyecto como la carpeta 'src' al path de Python para evitar fallos de importación
-ruta_raiz = os.path.abspath(os.path.dirname(__file__))
-ruta_src = os.path.join(ruta_raiz, "src")
+# --- BLINDAJE ULTRA-DEFINITIVO PARA RUTAS EN SERVIDORES (STREAMLIT CLOUD) ---
+# Encontramos la ruta absoluta de la carpeta 'src'
+ruta_actual = os.path.dirname(os.path.abspath(__file__))
+ruta_src = os.path.join(ruta_actual, "src")
 
-if ruta_raiz not in sys.path:
-    sys.path.append(ruta_raiz)
+# Forzamos a Python a insertar 'src' al principio de todo su mapa de búsqueda
 if ruta_src not in sys.path:
-    sys.path.append(ruta_src)
-# -----------------------------------------------------------------------
+    sys.path.insert(0, ruta_src)
+if ruta_actual not in sys.path:
+    sys.path.insert(0, ruta_actual)
+# -----------------------------------------------------------------------------
 
 import math
-# SOLUCIÓN DE RAÍZ: Usamos importaciones absolutas apoyadas por el ajuste de path superior
-from src.database.connection import engine, Base, SessionLocal
-from src.modules.operations.models import Pozo, Intervencion
-from src.modules.pumping.calculator import CementCalculator
-from src.modules.pumping.services import PumpingService
+
+# Al inyectar 'src' con el índice 0 en el path, Python busca directamente desde adentro de src.
+# Por lo tanto, llamamos a los módulos de forma limpia y directa:
+from database.connection import engine, Base, SessionLocal
+from modules.operations.models import Pozo, Intervencion
+from modules.pumping.calculator import CementCalculator
+from modules.pumping.services import PumpingService
 
 # Crear las tablas automáticamente si no existen (SQLite local o Postgres)
+Base.metadata.create_all(bind=engine)
+
+# ... (Todo el resto de tu código de Streamlit hacia abajo queda exactamente igual)
 Base.metadata.create_all(bind=engine)
 
 st.set_page_config(
