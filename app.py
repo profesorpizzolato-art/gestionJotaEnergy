@@ -1,5 +1,12 @@
 # app.py
+import os
+import sys
 import streamlit as st
+
+# ---- TRUCO PARA RECONOCER LA CARPETA SRC EN SERVIDORES Y EN LA NUBE ----
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+# -----------------------------------------------------------------------
+
 import math
 from src.database.connection import engine, Base, SessionLocal
 from src.modules.operations.models import Pozo, Intervencion
@@ -15,11 +22,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# Estilo corporativo (#1E7373)
-st.markdown(f"""
+# Estilo corporativo con el verde azulado (#1E7373)
+st.markdown("""
     <style>
-    .titulo-corporativo {{ color: #1E7373; font-weight: bold; }}
-    .stButton>button {{ background-color: #1E7373; color: white; border-radius: 5px; }}
+    .titulo-corporativo { color: #1E7373; font-weight: bold; }
+    .stButton>button { background-color: #1E7373; color: white; border-radius: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -46,72 +53,96 @@ with st.sidebar.form("form_pozo"):
         finally:
             db.close()
 
-# --- PANEL CENTRAL: DISEÑO DE LECHADA ---
-st.subheader("Cálculo y Registro de Diseño de Cementación")
+# --- PANEL CENTRAL: NAVEGACIÓN MULTISERVICIO ---
+# Organizamos por pestañas para expandir fácilmente a Estimulación/Fractura y P&A
+tab_cementacion, tab_estimulacion, tab_abandono = st.tabs([
+    "🧪 Cementación de Pozos", 
+    "⚡ Estimulación y Fractura", 
+    "🛑 Abandono de Pozos (P&A)"
+])
 
-# Recuperar pozos desde la DB para el selector
-db = SessionLocal()
-pozos_disponibles = db.query(Pozo).all()
-db.close()
+# =====================================================================
+# VISTA 1: CEMENTACIÓN
+# =====================================================================
+with tab_cementacion:
+    st.subheader("Cálculo y Registro de Diseño de Cementación")
 
-if not pozos_disponibles:
-    st.warning("⚠️ Para empezar, registrá al menos un pozo en la barra lateral izquierda.")
-else:
-    col1, col2 = st.columns(2)
+    db = SessionLocal()
+    pozos_disponibles = db.query(Pozo).all()
+    db.close()
 
-    with col1:
-        st.subheader("📋 Parámetros de la Operación")
-        pozo_sel = st.selectbox("Seleccionar Pozo Target", pozos_disponibles, format_func=lambda x: x.nombre_pozo)
-        ingeniero = st.text_input("Ingeniero de Operaciones a Cargo")
-        
-        st.markdown("---")
-        id_pozo = st.number_input("Diámetro del Pozo / Open Hole (pulgadas)", min_value=1.0, value=8.5, step=0.1)
-        od_casing = st.number_input("Diámetro Externo del Casing (pulgadas)", min_value=1.0, value=7.0, step=0.1)
-        longitud = st.number_input("Longitud del intervalo a cementar (ft)", min_value=0.0, value=1000.0, step=100.0)
-        
-        st.markdown("---")
-        st.subheader("🧪 Propiedades de la Mezcla")
-        rendimiento = st.number_input("Rendimiento del Cemento (ft³/saco)", min_value=0.5, value=1.18, step=0.01)
-        agua_req = st.number_input("Agua Requerida (gal/saco)", min_value=0.0, value=5.2, step=0.1)
-        dosis_retardador = st.number_input("Dosis de Aditivo/Retardador (GPS)", min_value=0.0, value=0.05, step=0.01)
+    if not pozos_disponibles:
+        st.warning("⚠️ Para empezar, registrá al menos un pozo en la barra lateral izquierda.")
+    else:
+        col1, col2 = st.columns(2)
 
-    with col2:
-        st.subheader("📊 Resultados del Diseño")
-        
-        if st.button("Calcular y Guardar en Base de Datos"):
-            if not ingeniero:
-                st.error("⚠️ Por favor, ingresá el nombre del ingeniero a cargo antes de guardar.")
-            else:
-                try:
-                    # 1. Ejecutar cálculos
-                    vol_anular_bbl = CementCalculator.calcular_volumen_espacio_anular(od_casing, id_pozo, longitud)
-                    sacos_totales = CementCalculator.calcular_requerimiento_sacos(vol_anular_bbl, rendimiento)
-                    agua_total_bbl = CementCalculator.calcular_agua_mezcla(sacos_totales, agua_req)
-                    aditivo_total_gal = CementCalculator.calcular_aditivo_liquido(sacos_totales, dosis_retardador)
-                    
-                    # 2. Mostrar en pantalla con formato limpio
-                    st.metric(label="Volumen Total de Lechada Requerido", value=f"{vol_anular_bbl} bbl")
-                    st.metric(label="Cantidad de Sacos de Cemento", value=f"{sacos_totales} Sks")
-                    st.metric(label="Agua de Mezcla Total Requerida", value=f"{agua_total_bbl} bbl")
-                    st.metric(label="Aditivo Líquido Necesario", value=f"{aditivo_total_gal} gal")
-                    
-                    # 3. Persistir en la Base de Datos relacional
-                    db = SessionLocal()
-                    nueva_intervencion = Intervencion(
-                        pozo_id=pozo_sel.id,
-                        tipo_servicio="CEMENTACION",
-                        ingeniero_a_cargo=ingeniero,
-                        estado="FINALIZADO"
-                    )
-                    db.add(nueva_intervencion)
-                    db.commit()
-                    
-                    # Guardar resumen del cálculo en el campo de texto de la intervención
-                    resumen_texto = f"Diseño: {vol_anular_bbl} bbl lechada, {sacos_totales} Sks, {agua_total_bbl} bbl agua, {aditivo_total_gal} gal aditivo."
-                    PumpingService.registrar_diseno_cementacion(db, nueva_intervencion.id, resumen_texto)
-                    db.close()
-                    
-                    st.success(f"✅ ¡Operación guardada exitosamente en el histórico para el pozo {pozo_sel.nombre_pozo}!")
-                    
-                except Exception as e:
-                    st.error(f"Error en los parámetros técnicos: {e}")
+        with col1:
+            st.subheader("📋 Parámetros de la Operación")
+            pozo_sel = st.selectbox("Seleccionar Pozo Target", pozos_disponibles, format_func=lambda x: x.nombre_pozo)
+            ingeniero = st.text_input("Ingeniero de Operaciones a Cargo")
+            
+            st.markdown("---")
+            id_pozo = st.number_input("Diámetro del Pozo / Open Hole (pulgadas)", min_value=1.0, value=8.5, step=0.1)
+            od_casing = st.number_input("Diámetro Externo del Casing (pulgadas)", min_value=1.0, value=7.0, step=0.1)
+            longitud = st.number_input("Longitud del intervalo a cementar (ft)", min_value=0.0, value=1000.0, step=100.0)
+            
+            st.markdown("---")
+            st.subheader("🧪 Propiedades de la Mezcla")
+            rendimiento = st.number_input("Rendimiento del Cemento (ft³/saco)", min_value=0.5, value=1.18, step=0.01)
+            agua_req = st.number_input("Agua Requerida (gal/saco)", min_value=0.0, value=5.2, step=0.1)
+            dosis_retardador = st.number_input("Dosis de Aditivo/Retardador (GPS)", min_value=0.0, value=0.05, step=0.01)
+
+        with col2:
+            st.subheader("📊 Resultados del Diseño")
+            
+            if st.button("Calcular y Guardar en Base de Datos"):
+                if not ingeniero:
+                    st.error("⚠️ Por favor, ingresá el nombre del ingeniero a cargo antes de guardar.")
+                else:
+                    try:
+                        # 1. Ejecutar cálculos
+                        vol_anular_bbl = CementCalculator.calcular_volumen_espacio_anular(od_casing, id_pozo, longitud)
+                        sacos_totales = CementCalculator.calcular_requerimiento_sacos(vol_anular_bbl, rendimiento)
+                        agua_total_bbl = CementCalculator.calcular_agua_mezcla(sacos_totales, agua_req)
+                        aditivo_total_gal = CementCalculator.calcular_aditivo_liquido(sacos_totales, dosis_retardador)
+                        
+                        # 2. Mostrar en pantalla con formato limpio
+                        st.metric(label="Volumen Total de Lechada Requerido", value=f"{vol_anular_bbl} bbl")
+                        st.metric(label="Cantidad de Sacos de Cemento", value=f"{sacos_totales} Sks")
+                        st.metric(label="Agua de Mezcla Total Requerida", value=f"{agua_total_bbl} bbl")
+                        st.metric(label="Aditivo Líquido Necesario", value=f"{aditivo_total_gal} gal")
+                        
+                        # 3. Persistir en la Base de Datos relacional
+                        db = SessionLocal()
+                        nueva_intervencion = Intervencion(
+                            pozo_id=pozo_sel.id,
+                            tipo_servicio="CEMENTACION",
+                            ingeniero_a_cargo=ingeniero,
+                            estado="FINALIZADO"
+                        )
+                        db.add(nueva_intervencion)
+                        db.commit()
+                        
+                        # Guardar resumen del cálculo en el campo de texto de la intervención
+                        resumen_texto = f"Diseño: {vol_anular_bbl} bbl lechada, {sacos_totales} Sks, {agua_total_bbl} bbl agua, {aditivo_total_gal} gal aditivo."
+                        PumpingService.registrar_diseno_cementacion(db, nueva_intervencion.id, resumen_texto)
+                        db.close()
+                        
+                        st.success(f"✅ ¡Operación guardada exitosamente en el histórico para el pozo {pozo_sel.nombre_pozo}!")
+                        
+                    except Exception as e:
+                        st.error(f"Error en los parámetros técnicos: {e}")
+
+# =====================================================================
+# VISTA 2: ESTIMULACIÓN Y FRACTURA (Siguiente Fase)
+# =====================================================================
+with tab_estimulacion:
+    st.subheader("Simulación de Etapas de Fractura Hidráulica e Inyección de Gel")
+    st.info("💡 Módulo listo para recibir la lógica de concentraciones de apuntalante y geles portadores.")
+
+# =====================================================================
+# VISTA 3: ABANDONO DE POZOS (Siguiente Fase)
+# =====================================================================
+with tab_abandono:
+    st.subheader("Verificación de Protocolos de Aislamiento y Tapones de Cemento (P&A)")
+    st.info("💡 Módulo listo para la parametrización de pruebas de hermeticidad y corte de casing.")
