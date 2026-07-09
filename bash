@@ -16,3 +16,6 @@ git push origin main
 git add app.py
 git commit -m "Fix: Reparado y expandido app.py con integracion HSE y volumenes reales"
 git push origin main
+git add src/database/connection.py
+git commit -m "Fix: Corregido import incorrecto de create_index en connection.py"
+git push origin main
