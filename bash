@@ -13,3 +13,6 @@ git push origin main
 git add app.py src/modules/operations/models.py
 git commit -m "Módulo Operativo e Higiene: Añadido Checklist HSE y campos de volumen real vs diseño"
 git push origin main
+git add app.py
+git commit -m "Fix: Reparado y expandido app.py con integracion HSE y volumenes reales"
+git push origin main
