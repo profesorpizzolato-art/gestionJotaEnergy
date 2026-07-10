@@ -5,17 +5,11 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from src.modules.operations.models import Intervencion, AlmacenMendoza
+from src.modules.operations.models import Intervencion, AlmacenMendoza, HistorialAlmacen
 
 class PumpingService:
-    """
-    Servicios lógicos de Jota Energy para la gestión de bombeo, 
-    logística real de almacén Mendoza e informes comerciales.
-    """
-
     @staticmethod
     def inicializar_almacen_si_vacio(db: Session):
-        """Inicializa ítems base en el almacén si la tabla está en cero."""
         items_base = [
             {"item_nombre": "Cemento Clase G", "unidad": "Sks", "stock_actual": 1500.0, "stock_minimo_alerta": 300.0},
             {"item_nombre": "Retardador Líquido Clase 11/12", "unidad": "gal", "stock_actual": 200.0, "stock_minimo_alerta": 50.0},
@@ -24,49 +18,40 @@ class PumpingService:
         for item in items_base:
             existe = db.query(AlmacenMendoza).filter(AlmacenMendoza.item_nombre == item["item_nombre"]).first()
             if not existe:
-                nuevo_item = AlmacenMendoza(**item)
-                db.add(nuevo_item)
+                db.add(AlmacenMendoza(**item))
         db.commit()
 
     @staticmethod
-    def verificar_y_descontar_stock(db: Session, cemento_sks: int, aditivo_gal: float) -> dict:
-        """
-        Módulo de Activos y Suministros:
-        Verifica disponibilidad física en la Base Mendoza y ejecuta el descuento real.
-        """
+    def registrar_movimiento_almacen(db: Session, item_id: int, tipo: str, cantidad: float, referencia: str):
+        nuevo_registro = HistorialAlmacen(item_id=item_id, tipo_movimiento=tipo, cantidad=cantidad, referencia=referencia)
+        db.add(nuevo_registro)
+        db.commit()
+
+    @staticmethod
+    def verificar_y_descontar_stock(db: Session, cemento_sks: int, aditivo_gal: float, pozo_nombre: str) -> dict:
         item_cemento = db.query(AlmacenMendoza).filter(AlmacenMendoza.item_nombre == "Cemento Clase G").first()
         item_aditivo = db.query(AlmacenMendoza).filter(AlmacenMendoza.item_nombre == "Retardador Líquido Clase 11/12").first()
+        logistica_info = {"status": "OK", "msg": "Materiales validados y despachados de Base Mendoza.", "alertas": []}
 
-        logistica_info = {
-            "status": "OK",
-            "msg": "Materiales despachados de manera exitosa de Base Mendoza.",
-            "alertas": []
-        }
-
-        # Verificaciones de stock mínimo
         if item_cemento and item_cemento.stock_actual < cemento_sks:
             logistica_info["status"] = "ERROR"
-            logistica_info["msg"] = f"❌ Stock Insuficiente de Cemento. Requerido: {cemento_sks} Sks | Disponible: {item_cemento.stock_actual} Sks."
+            logistica_info["msg"] = f"❌ Stock Insuficiente de Cemento. Requerido: {cemento_sks} Sks | En Almacén: {item_cemento.stock_actual} Sks."
             return logistica_info
-        
         if item_aditivo and item_aditivo.stock_actual < aditivo_gal:
             logistica_info["status"] = "ERROR"
-            logistica_info["msg"] = f"❌ Stock Insuficiente de Aditivos. Requerido: {aditivo_gal} gal | Disponible: {item_aditivo.stock_actual} gal."
+            logistica_info["msg"] = f"❌ Stock Insuficiente de Aditivos. Requerido: {aditivo_gal} gal | En Almacén: {item_aditivo.stock_actual} gal."
             return logistica_info
 
-        # Descuento físico
         if item_cemento and item_aditivo:
             item_cemento.stock_actual -= cemento_sks
             item_aditivo.stock_actual -= aditivo_gal
-            
-            # Alertas de punto de reorden
+            PumpingService.registrar_movimiento_almacen(db, item_cemento.id, "EGRESO", cemento_sks, f"Consumo Operativo Pozo {pozo_nombre}")
+            PumpingService.registrar_movimiento_almacen(db, item_aditivo.id, "EGRESO", aditivo_gal, f"Consumo Operativo Pozo {pozo_nombre}")
             if item_cemento.stock_actual <= item_cemento.stock_minimo_alerta:
-                logistica_info["alertas"].append(f"⚠️ ¡Alerta de Stock Crítico! Cemento Clase G por debajo del mínimo ({item_cemento.stock_actual} Sks restantes).")
+                logistica_info["alertas"].append(f"⚠️ Stock Crítico: Cemento Clase G por debajo del mínimo de seguridad.")
             if item_aditivo.stock_actual <= item_aditivo.stock_minimo_alerta:
-                logistica_info["alertas"].append(f"⚠️ ¡Alerta de Stock Crítico! Retardador Líquido por debajo del mínimo ({item_aditivo.stock_actual} gal restantes).")
-            
+                logistica_info["alertas"].append(f"⚠️ Stock Crítico: Aditivo Líquido por debajo del mínimo de seguridad.")
             db.commit()
-
         return logistica_info
 
     @staticmethod
@@ -75,7 +60,6 @@ class PumpingService:
         if intervencion:
             intervencion.resumen_calculo = resumen_texto
             db.commit()
-            db.refresh(intervencion)
         return intervencion
 
     @staticmethod
@@ -83,7 +67,6 @@ class PumpingService:
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
         story = []
-        
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle('CorpTitle', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#1E7373'), spaceAfter=20)
         subtitle_style = ParagraphStyle('CorpSub', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#333333'), spaceAfter=12)
@@ -91,7 +74,7 @@ class PumpingService:
 
         story.append(Paragraph("⚡ JOTA ENERGY — REPORT DE FIN DE TRABAJO", title_style))
         story.append(Paragraph(f"<b>Servicio:</b> {intervencion.tipo_servicio} | <b>Estado:</b> {intervencion.estado}", normal_style))
-        story.append(Paragraph(f"<b>Fecha de Operación:</b> {intervencion.fecha_operacion.strftime('%Y-%m-%d %H:%M')}", normal_style))
+        story.append(Paragraph(f"<b>Fecha:</b> {intervencion.fecha_operacion.strftime('%Y-%m-%d %H:%M')}", normal_style))
         story.append(Spacer(1, 15))
 
         story.append(Paragraph("📋 Información de la Intervención", subtitle_style))
@@ -121,15 +104,6 @@ class PumpingService:
             ('GRID', (0,0), (-1,-1), 0.5, colors.grey), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F9F9F9')]),
         ]))
         story.append(t2)
-        story.append(Spacer(1, 25))
-
-        story.append(Paragraph("<b>Aprobación Técnica y Conformidad del Cliente:</b>", normal_style))
-        story.append(Spacer(1, 40))
-        datos_firmas = [["___________________________", "___________________________"], ["Firma Ingeniero Jota Energy", "Firma Supervisor de Operaciones"]]
-        t3 = Table(datos_firmas, colWidths=[260, 260])
-        t3.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER')]))
-        story.append(t3)
-
         doc.build(story)
         buffer.seek(0)
         return buffer.getvalue()
