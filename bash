@@ -22,3 +22,6 @@ git push origin main
 git add src/modules/pumping/services.py
 git commit -m "Fix: Corregida ruta de importación de Intervencion en services.py añadiendo prefijo src"
 git push origin main
+git add requirements.txt src/modules/pumping/services.py app.py
+git commit -m "Feature: Agregados reportes PDF, simulador logistico e ingenieria en pestañas de Fractura y P&A"
+git push origin main
