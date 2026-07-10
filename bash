@@ -41,3 +41,6 @@ git push origin main
 git add app.py
 git commit -m "UI: Unificada estructura de sidebar fijo e inicializacion automatica de stock"
 git push origin main
+git add app.py
+git commit -m "Branding & UI: Unificada la carátula de Jota Energy, arreglado sidebar y removidos errores"
+git push origin main
