@@ -107,3 +107,22 @@ class PumpingService:
         doc.build(story)
         buffer.seek(0)
         return buffer.getvalue()
+@staticmethod
+    def verificar_y_descontar_arena(db: Session, proppant_lbs: float, pozo_nombre: str) -> dict:
+        """Valida y descuenta stock físico de apuntalante para Fracturas."""
+        item_arena = db.query(AlmacenMendoza).filter(AlmacenMendoza.item_nombre == "Apuntalante / Arena 20/40").first()
+        logistica_info = {"status": "OK", "msg": "Logística: Arena despachada desde Base Mendoza.", "alertas": []}
+
+        if item_arena and item_arena.stock_actual < proppant_lbs:
+            logistica_info["status"] = "ERROR"
+            logistica_info["msg"] = f"❌ Quiebre de Stock: Requiere {proppant_lbs:,.1f} lbs | Disponible: {item_arena.stock_actual:,.1f} lbs."
+            return logistica_info
+
+        if item_arena:
+            item_arena.stock_actual -= proppant_lbs
+            PumpingService.registrar_movimiento_almacen(db, item_arena.id, "EGRESO", proppant_lbs, f"Inyección Fractura Pozo {pozo_nombre}")
+            if item_arena.stock_actual <= item_arena.stock_minimo_alerta:
+                logistica_info["alertas"].append("⚠️ Alerta Patrimonial: Stock de Arena por debajo del límite operativo de seguridad.")
+            db.commit()
+            
+        return logistica_info
