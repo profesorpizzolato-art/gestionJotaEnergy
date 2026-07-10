@@ -62,37 +62,58 @@ with tab_cem:
         presion_max = st.number_input("Presión Máx (psi)", value=2500.0)
         caudal = st.number_input("Caudal Prom (bpm)", value=4.0)
     
-    if st.button("Ejecutar Protocolo API"):
-        if not ing_cargo:
-            st.error("⚠️ El nombre del ingeniero es obligatorio.")
+    if st.button("Ejecutar Protocolo Cementación"):
+        if not ing_cargo: st.error("⚠️ Ingeniero obligatorio.")
         else:
             vol = CementCalculator.calcular_volumen_espacio_anular(od_casing, id_pozo, longitud)
             sacos = math.ceil(CementCalculator.calcular_requerimiento_sacos(vol, rend))
-            
             db = SessionLocal()
-            logistica = PumpingService.verificar_y_descontar_stock(db, sacos, 0, nombre_pozo)
-            
-            if logistica["status"] == "OK":
-                nueva = Intervencion(
-                    pozo_id=1, 
-                    tipo_servicio="CEMENTACION", 
-                    ingeniero_a_cargo=ing_cargo,
-                    volumen_teorico_bbl=vol,
-                    volumen_real_bbl=vol,
-                    presion_max_psi=presion_max,
-                    caudal_promedio_bpm=caudal,
-                    estado="FINALIZADO"
-                )
+            log = PumpingService.verificar_y_descontar_stock(db, sacos, 0, nombre_pozo)
+            if log["status"] == "OK":
+                nueva = Intervencion(pozo_id=1, tipo_servicio="CEMENTACION", ingeniero_a_cargo=ing_cargo, 
+                                     volumen_teorico_bbl=vol, volumen_real_bbl=vol, presion_max_psi=presion_max, 
+                                     caudal_promedio_bpm=caudal, estado="FINALIZADO")
                 db.add(nueva)
                 db.commit()
-                st.success(f"Operación finalizada: {vol:.2f} bbl registrados.")
-            else:
-                st.error(logistica["msg"])
+                st.success("Cementación registrada.")
+            else: st.error(log["msg"])
             db.close()
 
+with tab_est:
+    st.subheader("⚡ Estimulación y Fractura")
+    lbs_arena = st.number_input("Carga de Apuntalante (lbs)", value=50000.0)
+    ing_est = st.text_input("Ingeniero a cargo", key="est_ing")
+    if st.button("Ejecutar Estimulación"):
+        db = SessionLocal()
+        log = PumpingService.verificar_y_descontar_arena(db, lbs_arena, nombre_pozo)
+        if log["status"] == "OK":
+            nueva = Intervencion(pozo_id=1, tipo_servicio="FRACTURA", ingeniero_a_cargo=ing_est, 
+                                 volumen_teorico_bbl=0, volumen_real_bbl=0, presion_max_psi=0, caudal_promedio_bpm=0, estado="FINALIZADO")
+            db.add(nueva)
+            db.commit()
+            st.success("Fractura registrada y stock descontado.")
+        else: st.error(log["msg"])
+        db.close()
+
+with tab_aba:
+    st.subheader("🛑 Abandono de Pozos (P&A)")
+    herm = st.checkbox("Certificación de Hermeticidad (Check)")
+    ing_aba = st.text_input("Ingeniero a cargo", key="aba_ing")
+    if st.button("Ejecutar Abandono"):
+        db = SessionLocal()
+        nueva = Intervencion(pozo_id=1, tipo_servicio="ABANDONO", ingeniero_a_cargo=ing_aba, 
+                             chk_hermeticidad=herm, volumen_teorico_bbl=0, volumen_real_bbl=0, 
+                             presion_max_psi=0, caudal_promedio_bpm=0, estado="FINALIZADO")
+        db.add(nueva)
+        db.commit()
+        db.close()
+        st.success("Protocolo de abandono finalizado.")
+
 with tab_aud:
-    st.subheader("📊 Historial de Auditoría (ERP)")
+    st.subheader("📊 Auditoría Integral (ERP)")
     db_a = SessionLocal()
-    movs = db_a.query(HistorialAlmacen).all()
-    st.table([{"Fecha": m.fecha, "Insumo": m.item_id, "Tipo": m.tipo_movimiento, "Cant": m.cantidad} for m in movs])
+    st.markdown("##### Intervenciones")
+    st.table([{"ID": i.id, "Tipo": i.tipo_servicio, "Ing": i.ingeniero_a_cargo, "Estado": i.estado} for i in db_a.query(Intervencion).all()])
+    st.markdown("##### Movimientos de Inventario")
+    st.table([{"Fecha": m.fecha.strftime("%Y-%m-%d"), "Insumo": m.item_id, "Tipo": m.tipo_movimiento, "Cant": m.cantidad} for m in db_a.query(HistorialAlmacen).all()])
     db_a.close()
