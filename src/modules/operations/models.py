@@ -1,4 +1,3 @@
-# src/modules/operations/models.py
 import datetime
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
 from src.database.connection import Base
@@ -15,22 +14,22 @@ class Intervencion(Base):
     id = Column(Integer, primary_key=True, index=True)
     pozo_id = Column(Integer, ForeignKey("pozos.id"), nullable=False)
     tipo_servicio = Column(String, nullable=False) # CEMENTACION, FRACTURA, ABANDONO
-    ingeniero_a_cargo = Column(String, nullable=False)
     
-    # Parámetros Volumétricos / Presiones
-    volumen_teorico_bbl = Column(Float, nullable=False)
-    volumen_real_bbl = Column(Float, nullable=False)
-    presion_max_psi = Column(Float, nullable=False)
-    caudal_promedio_bpm = Column(Float, nullable=False)
+    # Ahora permitimos nulos en los campos que se llenan post-operación
+    ingeniero_a_cargo = Column(String, nullable=True) 
+    volumen_teorico_bbl = Column(Float, nullable=True)
+    volumen_real_bbl = Column(Float, nullable=True)
+    presion_max_psi = Column(Float, nullable=True)
+    caudal_promedio_bpm = Column(Float, nullable=True)
     
-    # Protocolos Normalizados QHSE / Regulador (Guardados como banderas estrictas)
-    chk_presion_lineas = Column(Boolean, default=False)   # Cementación / Fractura
-    chk_valvulas_alivio = Column(Boolean, default=False)  # Calibración PRV
-    chk_zona_exclusion = Column(Boolean, default=False)   # QHSE Perimetral
-    chk_control_gel = Column(Boolean, default=False)      # Exclusivo Fractura
-    chk_hermeticidad = Column(Boolean, default=False)     # Exclusivo Abandono (P&A)
+    # Protocolos Normalizados QHSE
+    chk_presion_lineas = Column(Boolean, default=False)
+    chk_valvulas_alivio = Column(Boolean, default=False)
+    chk_zona_exclusion = Column(Boolean, default=False)
+    chk_control_gel = Column(Boolean, default=False)
+    chk_hermeticidad = Column(Boolean, default=False)
     
-    estado = Column(String, default="PLANIFICADO")        # PLANIFICADO, FINALIZADO, RECHAZADO
+    estado = Column(String, default="PLANIFICADO")
     resumen_calculo = Column(String, nullable=True)
     fecha_operacion = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -46,7 +45,7 @@ class HistorialAlmacen(Base):
     __tablename__ = "historial_almacen"
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("almacen_mendoza.id"), nullable=False)
-    tipo_movimiento = Column(String, nullable=False) # INGRESO o EGRESO
+    tipo_movimiento = Column(String, nullable=False)
     cantidad = Column(Float, nullable=False)
     referencia = Column(String, nullable=True)
     fecha = Column(DateTime, default=datetime.datetime.utcnow)
