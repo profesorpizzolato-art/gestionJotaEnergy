@@ -48,9 +48,9 @@ class PumpingService:
             PumpingService.registrar_movimiento_almacen(db, item_cemento.id, "EGRESO", cemento_sks, f"Consumo Operativo Pozo {pozo_nombre}")
             PumpingService.registrar_movimiento_almacen(db, item_aditivo.id, "EGRESO", aditivo_gal, f"Consumo Operativo Pozo {pozo_nombre}")
             if item_cemento.stock_actual <= item_cemento.stock_minimo_alerta:
-                logistica_info["alertas"].append(f"⚠️ Stock Crítico: Cemento Clase G por debajo del mínimo de seguridad.")
+                logistica_info["alertas"].append("⚠️ Stock Crítico: Cemento Clase G por debajo del mínimo de seguridad.")
             if item_aditivo.stock_actual <= item_aditivo.stock_minimo_alerta:
-                logistica_info["alertas"].append(f"⚠️ Stock Crítico: Aditivo Líquido por debajo del mínimo de seguridad.")
+                logistica_info["alertas"].append("⚠️ Stock Crítico: Aditivo Líquido por debajo del mínimo de seguridad.")
             db.commit()
         return logistica_info
 
@@ -107,7 +107,8 @@ class PumpingService:
         doc.build(story)
         buffer.seek(0)
         return buffer.getvalue()
-@staticmethod
+
+    @staticmethod
     def verificar_y_descontar_arena(db: Session, proppant_lbs: float, pozo_nombre: str) -> dict:
         """Valida y descuenta stock físico de apuntalante para Fracturas."""
         item_arena = db.query(AlmacenMendoza).filter(AlmacenMendoza.item_nombre == "Apuntalante / Arena 20/40").first()
