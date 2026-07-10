@@ -11,11 +11,16 @@ if directorio_raiz not in sys.path:
 
 import math
 from src.database.connection import engine, Base, SessionLocal
-from src.modules.operations.models import Pozo, Intervencion
+from src.modules.operations.models import Pozo, Intervencion, AlmacenMendoza
 from src.modules.pumping.calculator import CementCalculator
 from src.modules.pumping.services import PumpingService
 
 Base.metadata.create_all(bind=engine)
+
+# Inicializamos Almacén con stock base si es una base de datos nueva
+db_init = SessionLocal()
+PumpingService.inicializar_almacen_si_vacio(db_init)
+db_init.close()
 
 st.set_page_config(
     page_title="Jota Energy - Operaciones",
@@ -32,7 +37,7 @@ st.markdown("""
 
 st.markdown('<h1 class="titulo-corporativo">⚡ Jota Energy — Módulo de Ingeniería</h1>', unsafe_allow_html=True)
 
-# --- SIDEBAR: GESTIÓN DE POZOS ---
+# --- SIDEBAR: GESTIÓN DE POZOS Y ALMACÉN ---
 st.sidebar.header("🛠️ Administración de Activos")
 with st.sidebar.form("form_pozo"):
     nombre_pozo = st.text_input("Nombre del Pozo (Ej: PM-1024)")
@@ -53,6 +58,35 @@ with st.sidebar.form("form_pozo"):
         finally:
             db.close()
 
+# --- SIDEBAR INTERFAZ: MONITOREO DE INVENTARIO REAL ---
+st.sidebar.markdown("---")
+st.sidebar.header("📦 Inventario - Base Mendoza")
+
+db_alm = SessionLocal()
+items_inventario = db_alm.query(AlmacenMendoza).all()
+
+for item in items_inventario:
+    if item.stock_actual <= item.stock_minimo_alerta:
+        st.sidebar.error(f"🚨 **{item.item_nombre}**: {item.stock_actual:,.1f} {item.unidad} (BAJO MÍNIMO)")
+    else:
+        st.sidebar.success(f"✔️ **{item.item_nombre}**: {item.stock_actual:,.1f} {item.unidad}")
+
+# Formulario para reponer o ingresar stock físico
+with st.sidebar.expander("🔄 Reponer Stock / Entrada de Insumos"):
+    item_a_reponer = st.selectbox("Seleccionar Ítem", items_inventario, format_func=lambda x: x.item_nombre)
+    cantidad_refill = st.number_input("Cantidad a Ingresar", min_value=0.0, value=100.0, step=10.0)
+    if st.button("Confirmar Entrada de Almacén"):
+        item_db = db_alm.query(AlmacenMendoza).filter(AlmacenMendoza.id == item_a_reponer.id).first()
+        if item_db:
+            item_db.stock_actual += cantidad_refill
+            db_alm.commit()
+            st.sidebar.info(f"Ingresados {cantidad_refill} {item_db.unidad} a {item_db.item_nombre}.")
+            db_alm.close()
+            st.rerun()
+db_alm.close()
+
+
+# --- PANEL CENTRAL: MULTISERVICIO ---
 tab_cementacion, tab_estimulacion, tab_abandono = st.tabs([
     "🧪 Cementación de Pozos", 
     "⚡ Estimulación y Fractura", 
@@ -67,7 +101,7 @@ if not pozos_disponibles:
     st.warning("⚠️ Para empezar, registrá al menos un pozo en la barra lateral izquierda.")
 else:
     # =====================================================================
-    # VISTA 1: CEMENTACIÓN (HSE + LOGÍSTICA + PDF COMERCIAL)
+    # VISTA 1: CEMENTACIÓN (CON DESCUENTO REAL DE STOCK)
     # =====================================================================
     with tab_cementacion:
         st.subheader("🧪 Ingeniería de Cementación e Intervención en Campo")
@@ -107,45 +141,55 @@ else:
                     st.error("❌ RECHAZADO: Complete el Checklist HSE de seguridad.")
                 else:
                     vol_anular_bbl = CementCalculator.calcular_volumen_espacio_anular(od_casing, id_pozo, longitud)
-                    sacos_totales = CementCalculator.calcular_requerimiento_sacos(vol_anular_bbl, rendimiento)
+                    sacos_totales = math.ceil(CementCalculator.calcular_requerimiento_sacos(vol_anular_bbl, rendimiento))
                     agua_total_bbl = CementCalculator.calcular_agua_mezcla(sacos_totales, agua_req)
                     aditivo_total_gal = CementCalculator.calcular_aditivo_liquido(sacos_totales, dosis_retardador)
                     
-                    st.success("🔒 Protocolo HSE Verificado.")
+                    # EJECUCIÓN LOGÍSTICA REAL DE STOCK
+                    db_log = SessionLocal()
+                    info_stock = PumpingService.verificar_y_descontar_stock(db_log, sacos_totales, aditivo_total_gal)
                     
-                    # Logística de insumos (Mendoza)
-                    info_stock = PumpingService.simular_descuento_logistico(sacos_totales, aditivo_total_gal)
-                    st.info(f"📦 **Logística:** Despachado desde `{info_stock['origen']}` -> {info_stock['despacho_cemento']} y {info_stock['despacho_aditivos']}.")
-                    
-                    # Guardado en base de datos
-                    db = SessionLocal()
-                    nueva_int = Intervencion(
-                        pozo_id=pozo_sel.id, tipo_servicio="CEMENTACION", ingeniero_a_cargo=ingeniero,
-                        volumen_teorico_bbl=vol_anular_bbl, volumen_real_bbl=vol_real_bbl,
-                        presion_max_psi=presion_operativa, caudal_promedio_bpm=caudal_real,
-                        checklist_presion_lineas=chk_lineas, checklist_valvulas_alivio=chk_valvulas, checklist_zona_exclusion=chk_zona,
-                        estado="FINALIZADO"
-                    )
-                    db.add(nueva_int)
-                    db.commit()
-                    
-                    resumen = f"Diseño: {vol_anular_bbl} bbl. Real: {vol_real_bbl} bbl."
-                    PumpingService.registrar_diseno_cementacion(db, nueva_int.id, resumen)
-                    
-                    # Generación Comercial del PDF
-                    pdf_data = PumpingService.generar_pdf_post_job(nueva_int, pozo_sel.nombre_pozo, sacos_totales, aditivo_total_gal)
-                    db.close()
-                    
-                    st.metric(label="Desvío de Volumen", value=f"{round(vol_real_bbl - vol_anular_bbl, 2)} bbl")
-                    st.download_button(
-                        label="📥 Descargar Post-Job Report (PDF Cliente)",
-                        data=pdf_data,
-                        file_name=f"PostJob_Cementacion_{pozo_sel.nombre_pozo}.pdf",
-                        mime="application/pdf"
-                    )
+                    if info_stock["status"] == "ERROR":
+                        st.error(info_stock["msg"])
+                        db_log.close()
+                    else:
+                        st.success("🔒 Protocolo HSE Verificado Exitosamente.")
+                        st.success(f"📦 {info_stock['msg']}")
+                        
+                        # Mostrar advertencias de reorden si las hay
+                        for alerta in info_stock["alertas"]:
+                            st.warning(alerta)
+                        
+                        # Guardado de la intervención en el histórico
+                        nueva_int = Intervencion(
+                            pozo_id=pozo_sel.id, tipo_servicio="CEMENTACION", ingeniero_a_cargo=ingeniero,
+                            volumen_teorico_bbl=vol_anular_bbl, volumen_real_bbl=vol_real_bbl,
+                            presion_max_psi=presion_operativa, caudal_promedio_bpm=caudal_real,
+                            checklist_presion_lineas=chk_lineas, checklist_valvulas_alivio=chk_valvulas, checklist_zona_exclusion=chk_zona,
+                            estado="FINALIZADO"
+                        )
+                        db_log.add(nueva_int)
+                        db_log.commit()
+                        
+                        resumen = f"Diseño: {vol_anular_bbl} bbl. Real: {vol_real_bbl} bbl. Consumidos {sacos_totales} Sks."
+                        PumpingService.registrar_diseno_cementacion(db_log, nueva_int.id, resumen)
+                        
+                        # Generación Comercial del PDF
+                        pdf_data = PumpingService.generar_pdf_post_job(nueva_int, pozo_sel.nombre_pozo, sacos_totales, aditivo_total_gal)
+                        db_log.close()
+                        
+                        st.metric(label="Desvío de Volumen", value=f"{round(vol_real_bbl - vol_anular_bbl, 2)} bbl")
+                        st.download_button(
+                            label="📥 Descargar Post-Job Report (PDF Cliente)",
+                            data=pdf_data,
+                            file_name=f"PostJob_Cementacion_{pozo_sel.nombre_pozo}.pdf",
+                            mime="application/pdf"
+                        )
+                        # Forzar refresco de interfaz para actualizar cantidades del sidebar
+                        st.rerun()
 
     # =====================================================================
-    # VISTA 2: ESTIMULACIÓN Y FRACTURA (INGENIERÍA AÑADIDA)
+    # VISTA 2: ESTIMULACIÓN Y FRACTURA
     # =====================================================================
     with tab_estimulacion:
         st.subheader("⚡ Estimulación y Fractura Hidráulica")
@@ -167,7 +211,7 @@ else:
                 st.success(f"✅ Diseño de estimulación pre-guardado exitosamente para el pozo {pozo_frac.nombre_pozo}.")
 
     # =====================================================================
-    # VISTA 3: ABANDONO DE POZOS (INGENIERÍA AÑADIDA)
+    # VISTA 3: ABANDONO DE POZOS
     # =====================================================================
     with tab_abandono:
         st.subheader("🛑 Abandono de Pozos (P&A - Plug and Abandon)")
@@ -178,7 +222,7 @@ else:
             pozo_pa = st.selectbox("Seleccionar Pozo Target", pozos_disponibles, format_func=lambda x: x.nombre_pozo, key="pa_pozo")
             prof_tapón = st.number_input("Profundidad del Tapón de Cemento (Top of Cement - ft)", min_value=0.0, value=3000.0)
             long_tapon = st.number_input("Longitud Mínima Requerida del Tapón (ft)", min_value=100.0, value=200.0)
-            prueba_hermeticidad = st.checkbox("Prueba de Presión / Hermeticidad de Tapón Mecánico Aprobada")
+            prueba_hermeticidad = chk_zona = st.checkbox("Prueba de Presión / Hermeticidad de Tapón Mecánico Aprobada")
             
         with col_pa2:
             st.subheader("📋 Verificación Normativa")
