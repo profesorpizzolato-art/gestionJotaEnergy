@@ -14,7 +14,7 @@ st.markdown("""
     h1, h2, h3 { color: #1E7373 !important; }
     .stButton>button { background-color: #1E7373; color: white; border-radius: 5px; }
 </style>
-""", unsafe_with_html=True)
+""", unsafe_allow_html=True)  # <--- CORREGIDO AQUÍ
 
 # Inicialización
 Base.metadata.create_all(bind=engine)
