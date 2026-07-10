@@ -1,4 +1,4 @@
-# app.py (Sección de Pestañas Operativas actualizadas)
+# app.py
 import os
 import sys
 import streamlit as st
@@ -9,10 +9,60 @@ from src.modules.operations.models import Pozo, Intervencion, AlmacenMendoza, Hi
 from src.modules.pumping.calculator import CementCalculator
 from src.modules.pumping.services import PumpingService
 
+# 1. Configuración de página estricta (Fuerza la barra lateral siempre expandida)
+st.set_page_config(
+    page_title="Jota Energy - Operaciones",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# 2. Inicialización de la base de datos y stock inicial
 Base.metadata.create_all(bind=engine)
+db_init = SessionLocal()
+PumpingService.inicializar_almacen_si_vacio(db_init)
+db_init.close()
 
-# ... (Mantené la configuración inicial del Sidebar intacta) ...
+# --- BLOQUE DE LA BARRA LATERAL (SIDEBAR) ---
+with st.sidebar:
+    st.image("https://raw.githubusercontent.com/profesorpizzolato-art/gestionjotaenergy/main/logo_menfa.png", width=150, errors="ignore")
+    st.title("⚙️ Base Logística Mendoza")
+    st.markdown("---")
+    
+    # Formulario para registrar nuevos activos (Pozos)
+    st.subheader("📍 Registrar Pozo Target")
+    nuevo_pozo_nombre = st.text_input("Nombre del Pozo (Ej: Menfa-x1)")
+    nuevo_pozo_md = st.number_input("Profundidad MD (ft)", min_value=0.0, value=4500.0)
+    nuevo_pozo_tipo = st.selectbox("Tipo de Pozo", ["Exploratorio", "Desarrollo", "Inyector"])
+    
+    if st.button("Guardar Activo Patrimonial"):
+        if nuevo_pozo_nombre:
+            db_sidebar = SessionLocal()
+            existe = db_sidebar.query(Pozo).filter(Pozo.nombre_pozo == nuevo_pozo_nombre).first()
+            if existe:
+                st.error("❌ El pozo ya se encuentra registrado en el sistema.")
+            else:
+                p = Pozo(nombre_pozo=nuevo_pozo_nombre, profundidad_md_ft=nuevo_pozo_md, tipo_pozo=nuevo_pozo_tipo)
+                db_sidebar.add(p)
+                db_sidebar.commit()
+                st.success(f"✔️ Pozo {nuevo_pozo_nombre} dado de alta.")
+            db_sidebar.close()
+            st.rerun()
+        else:
+            st.warning("⚠️ Ingrese un nombre identificatorio para el pozo.")
 
+    st.markdown("---")
+    st.subheader("📦 Niveles de Stock Real")
+    db_sidebar_stock = SessionLocal()
+    stocks = db_sidebar_stock.query(AlmacenMendoza).all()
+    for s in stocks:
+        st.metric(label=s.item_nombre, value=f"{s.stock_actual:,.1f} {s.unidad}")
+        if s.stock_actual <= s.stock_minimo_alerta:
+            st.error(f"⚠️ Alerta: Stock de {s.item_nombre} por debajo del mínimo reglamentario.")
+    db_sidebar_stock.close()
+
+
+# --- PANEL CENTRAL: PESTAÑAS OPERATIVAS ---
 tab_cementacion, tab_estimulacion, tab_abandono, tab_auditoria = st.tabs([
     "🧪 Cementación de Pozos", "⚡ Estimulación y Fractura", "🛑 Abandono de Pozos (P&A)", "📊 Auditoría de Suministros (ERP)"
 ])
@@ -22,7 +72,7 @@ pozos_disponibles = db.query(Pozo).all()
 db.close()
 
 if not pozos_disponibles:
-    st.warning("⚠️ Registrá un pozo en la barra lateral para activar los paneles de ingeniería.")
+    st.warning("⚠️ Registrá un pozo en la barra lateral izquierda para activar los paneles de ingeniería de Jota Energy.")
 else:
     # --- VISTA 1: CEMENTACIÓN ---
     with tab_cementacion:
@@ -135,7 +185,7 @@ else:
 
     # --- VISTA 3: ABANDONO DE POZOS (P&A) ---
     with tab_abandono:
-        st.subheader("🛑 Abandono Definitivo de Pozos (P&A) — Protocolo de Hermeticidad")
+        st.subheader("🛑 Abandono Definivo de Pozos (P&A) — Protocolo de Hermeticidad")
         st.markdown("##### 🛑 Verificación Legal de Aislamiento Sustentable")
         
         col_pa_1, col_pa_2 = st.columns(2)
