@@ -1,16 +1,17 @@
-gestionJotaEnergy/              <-- Raíz del repositorio (Afuera de todo)
-├── app.py                      
-├── requirements.txt            
-├── README.md
-├── bash
-├── estructura
-└── src/                        <-- Única carpeta contenedora de lógica
+gestionjotaenergy/
+├── app.py                         # Orquestador visual de la interfaz de usuario (Streamlit)
+├── requirements.txt               # Dependencias del proyecto
+└── src/
+    ├── __init__.py
     ├── database/
-    │   └── connection.py
-    └── modules/
-        ├── __init__.py
-        ├── operations/
-        │   └── models.py
-        └── pumping/
-            ├── calculator.py
-            └── services.py
+    │   ├── __init__.py
+    │   └── connection.py          # Configuración del Engine de SQLAlchemy y Base
+    ├── modules/
+    │   ├── __init__.py
+    │   ├── operations/
+    │   │   ├── __init__.py
+    │   │   └── models.py          # Definición de tablas (Pozo, Intervencion, Almacen, Historial)
+    │   └── pumping/
+    │       ├── __init__.py
+    │       ├── calculator.py      # Cálculos físicos y matemáticos de ingeniería
+    │       └── services.py        # Reportes PDF, Auditoría de Stock y Lógica de Negocio
