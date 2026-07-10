@@ -8,7 +8,7 @@ from src.modules.pumping.services import PumpingService
 # Configuración de página
 st.set_page_config(page_title="Jota Energy - Sistema de Gestión Operativa", page_icon="⚡", layout="wide")
 
-# CSS para mantener la estética sin romper la funcionalidad
+# CSS Corporativo
 st.markdown("""
 <style>
     h1, h2, h3 { color: #1E7373 !important; }
@@ -18,11 +18,11 @@ st.markdown("""
 
 # Inicialización
 Base.metadata.create_all(bind=engine)
-db = SessionLocal()
-PumpingService.inicializar_almacen_si_vacio(db)
-db.close()
+db_init = SessionLocal()
+PumpingService.inicializar_almacen_si_vacio(db_init)
+db_init.close()
 
-# --- SIDEBAR: GESTIÓN DE ACTIVOS ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.image("https://raw.githubusercontent.com/profesorpizzolato-art/gestionjotaenergy/main/logo_menfa.png", width=140)
     st.title("⚙️ Jota Energy")
@@ -32,12 +32,12 @@ with st.sidebar:
     tipo = st.selectbox("Tipo", ["Exploratorio", "Desarrollo", "Inyector"])
     
     if st.button("Guardar Activo Patrimonial"):
-        db = SessionLocal()
-        nuevo = Pozo(nombre_pozo=nombre_pozo, profundidad_md_ft=md, tipo_pozo=tipo)
-        db.add(nuevo)
-        db.commit()
-        db.close()
-        st.rerun()
+        if nombre_pozo:
+            db = SessionLocal()
+            db.add(Pozo(nombre_pozo=nombre_pozo, profundidad_md_ft=md, tipo_pozo=tipo))
+            db.commit()
+            db.close()
+            st.rerun()
 
     st.markdown("---")
     st.subheader("📦 Niveles de Stock Real")
@@ -46,7 +46,7 @@ with st.sidebar:
         st.metric(label=s.item_nombre, value=f"{s.stock_actual:,.1f} {s.unidad}")
     db_s.close()
 
-# --- PANEL PRINCIPAL: OPERACIONES ---
+# --- PANEL PRINCIPAL ---
 tab_cem, tab_est, tab_aba, tab_aud = st.tabs(["🧪 Cementación", "⚡ Estimulación", "🛑 Abandono", "📊 Auditoría"])
 
 with tab_cem:
@@ -57,24 +57,42 @@ with tab_cem:
         od_casing = st.number_input("OD Casing (in)", value=7.0)
         longitud = st.number_input("Longitud (ft)", value=1000.0)
         rend = st.number_input("Rendimiento (ft³/saco)", value=1.18)
+    with col2:
+        ing_cargo = st.text_input("Ingeniero a cargo")
+        presion_max = st.number_input("Presión Máx (psi)", value=2500.0)
+        caudal = st.number_input("Caudal Prom (bpm)", value=4.0)
     
     if st.button("Ejecutar Protocolo API"):
-        vol = CementCalculator.calcular_volumen_espacio_anular(od_casing, id_pozo, longitud)
-        sacos = math.ceil(CementCalculator.calcular_requerimiento_sacos(vol, rend))
-        
-        db = SessionLocal()
-        # Aquí usamos el servicio que ya programaste
-        PumpingService.verificar_y_descontar_stock(db, sacos, 0, nombre_pozo)
-        nueva = Intervencion(pozo_id=1, tipo_servicio="CEMENTACION", volumen_teorico_bbl=vol)
-        db.add(nueva)
-        db.commit()
-        db.close()
-        st.success(f"Operación finalizada: {vol:.2f} bbl calculados y descontados de stock.")
+        if not ing_cargo:
+            st.error("⚠️ El nombre del ingeniero es obligatorio.")
+        else:
+            vol = CementCalculator.calcular_volumen_espacio_anular(od_casing, id_pozo, longitud)
+            sacos = math.ceil(CementCalculator.calcular_requerimiento_sacos(vol, rend))
+            
+            db = SessionLocal()
+            logistica = PumpingService.verificar_y_descontar_stock(db, sacos, 0, nombre_pozo)
+            
+            if logistica["status"] == "OK":
+                nueva = Intervencion(
+                    pozo_id=1, 
+                    tipo_servicio="CEMENTACION", 
+                    ingeniero_a_cargo=ing_cargo,
+                    volumen_teorico_bbl=vol,
+                    volumen_real_bbl=vol,
+                    presion_max_psi=presion_max,
+                    caudal_promedio_bpm=caudal,
+                    estado="FINALIZADO"
+                )
+                db.add(nueva)
+                db.commit()
+                st.success(f"Operación finalizada: {vol:.2f} bbl registrados.")
+            else:
+                st.error(logistica["msg"])
+            db.close()
 
 with tab_aud:
     st.subheader("📊 Historial de Auditoría (ERP)")
     db_a = SessionLocal()
     movs = db_a.query(HistorialAlmacen).all()
-    # Listado para auditoría
     st.table([{"Fecha": m.fecha, "Insumo": m.item_id, "Tipo": m.tipo_movimiento, "Cant": m.cantidad} for m in movs])
     db_a.close()
