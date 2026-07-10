@@ -25,3 +25,6 @@ git push origin main
 git add requirements.txt src/modules/pumping/services.py app.py
 git commit -m "Feature: Agregados reportes PDF, simulador logistico e ingenieria en pestañas de Fractura y P&A"
 git push origin main
+git add app.py
+git commit -m "Feature: Acoplada vista e interacciones del Almacen Mendoza real en el frontend"
+git push origin main
