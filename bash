@@ -38,3 +38,6 @@ git push origin main
 git add src/modules/pumping/services.py
 git commit -m "Fix: Corregida indentación estricta y alineación del servicio de almacén"
 git push origin main
+git add app.py
+git commit -m "UI: Unificada estructura de sidebar fijo e inicializacion automatica de stock"
+git push origin main
