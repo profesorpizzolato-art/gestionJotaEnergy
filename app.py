@@ -16,8 +16,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Inicialización
-Base.metadata.create_all(bind=engine)
+# Inicialización segura
+# Verificamos si las tablas existen antes de intentar crearlas
+from sqlalchemy import inspect
+inspector = inspect(engine)
+if not inspector.has_table("pozos"):
+    Base.metadata.create_all(bind=engine)
+
 db_init = SessionLocal()
 PumpingService.inicializar_almacen_si_vacio(db_init)
 db_init.close()
