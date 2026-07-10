@@ -28,3 +28,10 @@ git push origin main
 git add app.py
 git commit -m "Feature: Acoplada vista e interacciones del Almacen Mendoza real en el frontend"
 git push origin main
+# Crear estructura de carpetas
+mkdir -p src/database src/modules/operations src/modules/pumping
+
+# Agregar los archivos a Git, confirmar y subir
+git add src/ app.py
+git commit -m "Refactor: Modularización estructural completa del ERP Jota Energy"
+git push origin main
