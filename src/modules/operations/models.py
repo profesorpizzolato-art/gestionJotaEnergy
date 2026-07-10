@@ -14,16 +14,23 @@ class Intervencion(Base):
     __tablename__ = "intervenciones"
     id = Column(Integer, primary_key=True, index=True)
     pozo_id = Column(Integer, ForeignKey("pozos.id"), nullable=False)
-    tipo_servicio = Column(String, nullable=False)
+    tipo_servicio = Column(String, nullable=False) # CEMENTACION, FRACTURA, ABANDONO
     ingeniero_a_cargo = Column(String, nullable=False)
+    
+    # Parámetros Volumétricos / Presiones
     volumen_teorico_bbl = Column(Float, nullable=False)
     volumen_real_bbl = Column(Float, nullable=False)
     presion_max_psi = Column(Float, nullable=False)
     caudal_promedio_bpm = Column(Float, nullable=False)
-    checklist_presion_lineas = Column(Boolean, default=False)
-    checklist_valvulas_alivio = Column(Boolean, default=False)
-    checklist_zona_exclusion = Column(Boolean, default=False)
-    estado = Column(String, default="PLANIFICADO")
+    
+    # Protocolos Normalizados QHSE / Regulador (Guardados como banderas estrictas)
+    chk_presion_lineas = Column(Boolean, default=False)   # Cementación / Fractura
+    chk_valvulas_alivio = Column(Boolean, default=False)  # Calibración PRV
+    chk_zona_exclusion = Column(Boolean, default=False)   # QHSE Perimetral
+    chk_control_gel = Column(Boolean, default=False)      # Exclusivo Fractura
+    chk_hermeticidad = Column(Boolean, default=False)     # Exclusivo Abandono (P&A)
+    
+    estado = Column(String, default="PLANIFICADO")        # PLANIFICADO, FINALIZADO, RECHAZADO
     resumen_calculo = Column(String, nullable=True)
     fecha_operacion = Column(DateTime, default=datetime.datetime.utcnow)
 
