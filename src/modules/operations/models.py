@@ -40,3 +40,12 @@ class Intervencion(Base):
     fecha_operacion = Column(DateTime, default=datetime.datetime.utcnow)
 
     pozo = relationship("Pozo", back_populates="intervenciones")
+    
+class AlmacenMendoza(Base):
+    __tablename__ = "almacen_mendoza"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_nombre = Column(String, unique=True, nullable=False) # Cemento, Retardador, Arena
+    unidad = Column(String, nullable=False)                    # Sks, gal, lbs
+    stock_actual = Column(Float, default=0.0)
+    stock_minimo_alerta = Column(Float, default=100.0)         # Punto de reorden
