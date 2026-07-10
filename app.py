@@ -9,13 +9,23 @@ from src.modules.operations.models import Pozo, Intervencion, AlmacenMendoza, Hi
 from src.modules.pumping.calculator import CementCalculator
 from src.modules.pumping.services import PumpingService
 
-# 1. Configuración de página estricta (Fuerza la barra lateral siempre expandida)
+# 1. Configuración de página estricta (Estilo corporativo Jota Energy)
 st.set_page_config(
-    page_title="Jota Energy - Operaciones",
+    page_title="Jota Energy - Sistema de Gestión Operativa",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Estilo CSS personalizado para adaptar la paleta al logo verde petróleo
+st.markdown("""
+    <style>
+        .reportview-container .main .block-container{ max-width: 95%; }
+        h1, h2, h3 { color: #1E7373 !important; }
+        .stButton>button { background-color: #1E7373; color: white; border-radius: 5px; }
+        .stButton>button:hover { background-color: #155252; color: white; }
+    </style>
+""", unsafe_with_html=True)
 
 # 2. Inicialización de la base de datos y stock inicial
 Base.metadata.create_all(bind=engine)
@@ -25,13 +35,19 @@ db_init.close()
 
 # --- BLOQUE DE LA BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    st.image("https://raw.githubusercontent.com/profesorpizzolato-art/gestionjotaenergy/main/logo_menfa.png", width=150, errors="ignore")
-    st.title("⚙️ Base Logística Mendoza")
+    try:
+        # Cargamos el logo de Jota Energy
+        st.image("https://raw.githubusercontent.com/profesorpizzolato-art/gestionjotaenergy/main/logo_menfa.png", width=140)
+    except Exception:
+        pass  
+    
+    st.title("⚙️ Jota Energy")
+    st.caption("Base Logística & Control de Suministros")
     st.markdown("---")
     
     # Formulario para registrar nuevos activos (Pozos)
-    st.subheader("📍 Registrar Pozo Target")
-    nuevo_pozo_nombre = st.text_input("Nombre del Pozo (Ej: Menfa-x1)")
+    st.subheader("📍 Alta de Pozo Target")
+    nuevo_pozo_nombre = st.text_input("Nombre del Pozo (Ej: JE-Mza-x1)")
     nuevo_pozo_md = st.number_input("Profundidad MD (ft)", min_value=0.0, value=4500.0)
     nuevo_pozo_tipo = st.selectbox("Tipo de Pozo", ["Exploratorio", "Desarrollo", "Inyector"])
     
@@ -40,7 +56,7 @@ with st.sidebar:
             db_sidebar = SessionLocal()
             existe = db_sidebar.query(Pozo).filter(Pozo.nombre_pozo == nuevo_pozo_nombre).first()
             if existe:
-                st.error("❌ El pozo ya se encuentra registrado en el sistema.")
+                st.error("❌ El pozo ya se encuentra registrado.")
             else:
                 p = Pozo(nombre_pozo=nuevo_pozo_nombre, profundidad_md_ft=nuevo_pozo_md, tipo_pozo=nuevo_pozo_tipo)
                 db_sidebar.add(p)
@@ -49,7 +65,7 @@ with st.sidebar:
             db_sidebar.close()
             st.rerun()
         else:
-            st.warning("⚠️ Ingrese un nombre identificatorio para el pozo.")
+            st.warning("⚠️ Ingrese un nombre para el pozo.")
 
     st.markdown("---")
     st.subheader("📦 Niveles de Stock Real")
@@ -58,7 +74,7 @@ with st.sidebar:
     for s in stocks:
         st.metric(label=s.item_nombre, value=f"{s.stock_actual:,.1f} {s.unidad}")
         if s.stock_actual <= s.stock_minimo_alerta:
-            st.error(f"⚠️ Alerta: Stock de {s.item_nombre} por debajo del mínimo reglamentario.")
+            st.error(f"⚠️ Alerta: Stock crítico de {s.item_nombre}.")
     db_sidebar_stock.close()
 
 
@@ -72,7 +88,19 @@ pozos_disponibles = db.query(Pozo).all()
 db.close()
 
 if not pozos_disponibles:
-    st.warning("⚠️ Registrá un pozo en la barra lateral izquierda para activar los paneles de ingeniería de Jota Energy.")
+    # --- CARÁTULA DE BIENVENIDA SI NO HAY POZOS ---
+    st.markdown("""
+        <div style="background-color:#1E7373; padding:20px; border-radius:10px; margin-top:20px; color:white;">
+            <h1 style="color:white !important; margin:0;">⚡ JOTA ENERGY</h1>
+            <p style="font-size:1.2em; margin-top:10px;"><b>Sistema Avanzado de Gestión de Insumos y Servicios de Bombeo</b></p>
+        </div>
+    """, unsafe_with_html=True)
+    
+    st.markdown("### 📊 Panel de Control y Trazabilidad")
+    st.write("Bienvenido al simulador y ERP de operaciones de pozo. Este sistema permite verificar barreras hidráulicas, certificar normativas API y descontar stocks físicos de Base Mendoza en tiempo real.")
+    
+    st.info("💡 **Para activar los paneles de ingeniería:** Por favor, ingresá el nombre de tu primer pozo target en la barra lateral izquierda y hacé clic en **'Guardar Activo Patrimonial'**.")
+
 else:
     # --- VISTA 1: CEMENTACIÓN ---
     with tab_cementacion:
@@ -185,7 +213,7 @@ else:
 
     # --- VISTA 3: ABANDONO DE POZOS (P&A) ---
     with tab_abandono:
-        st.subheader("🛑 Abandono Definivo de Pozos (P&A) — Protocolo de Hermeticidad")
+        st.subheader("🛑 Abandono Definitivo de Pozos (P&A) — Protocolo de Hermeticidad")
         st.markdown("##### 🛑 Verificación Legal de Aislamiento Sustentable")
         
         col_pa_1, col_pa_2 = st.columns(2)
@@ -206,7 +234,7 @@ else:
                 if not ing_pa:
                     st.error("⚠️ Ingrese el Inspector Responsable del Cierre.")
                 elif not (chk_tag and chk_presion):
-                    st.error("❌ RECHAZADO: No cumple con la normativa regulatoria de aislamiento perpetuo.")
+                    st.error("❌ RECHAZADO: No cumple con la normativa de aislamiento.")
                 else:
                     db_pa = SessionLocal()
                     nuevo_pa = Intervencion(
@@ -219,7 +247,7 @@ else:
                     db_pa.add(nuevo_pa)
                     db_pa.commit()
                     db_pa.close()
-                    st.success(f"🛑 Pozo {pozo_pa.nombre_pozo} Clausurado de forma segura y permanente.")
+                    st.success(f"🛑 Pozo {pozo_pa.nombre_pozo} Clausurado de forma permanente.")
                     st.rerun()
 
     # --- VISTA 4: AUDITORÍA (ERP) ---
