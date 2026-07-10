@@ -35,3 +35,6 @@ mkdir -p src/database src/modules/operations src/modules/pumping
 git add src/ app.py
 git commit -m "Refactor: Modularización estructural completa del ERP Jota Energy"
 git push origin main
+git add src/modules/pumping/services.py
+git commit -m "Fix: Corregida indentación estricta y alineación del servicio de almacén"
+git push origin main
