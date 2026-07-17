@@ -1,17 +1,11 @@
-# src/database/connection.py
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "sqlite:///./operaciones.db"
+DATABASE_URL = "sqlite:///./jota_energy_v2.sqlite"
 
-# Usamos 'engine' como nombre estándar para que coincida con tus imports en app.py
-engine = create_engine(
-    DATABASE_URL, 
-    connect_args={"check_same_thread": False}
-)
-
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base compartida para todos tus modelos
+# ESTO ES LA CLAVE: Declarar la Base una sola vez
 Base = declarative_base()
