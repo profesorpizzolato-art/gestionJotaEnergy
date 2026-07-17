@@ -21,16 +21,19 @@ def renderizar_protocolo(tipo):
     return checks, ev
 
 # --- INICIALIZACIÓN ---
-if not inspect(engine).has_table("pozos"): Base.metadata.create_all(bind=engine)
+if not inspect(engine).has_table("pozos"): 
+    Base.metadata.create_all(bind=engine)
 
-# --- SIDEBAR ---
-with st.sidebar:
-    st.image("jota_ene.jpg", width=140)
-    st.title("⚙️ Jota Energy")
-    db = SessionLocal()
-    for s in db.query(AlmacenMendoza).all():
-        st.metric(s.item_nombre, f"{s.stock_actual:,.1f} {s.unidad}")
-    db.close()
+# FORZAR INICIALIZACIÓN DE DATOS (Vital para que el Almacén tenga opciones)
+db = SessionLocal()
+if db.query(AlmacenMendoza).count() == 0:
+    PumpingService.inicializar_almacen_si_vacio(db)
+    db.commit() # Aseguramos que los datos se guarden
+
+if db.query(Pozo).count() == 0:
+    db.add(Pozo(nombre_pozo="Pozo Operativo 01", profundidad_md_ft=5000, tipo_pozo="Desarrollo"))
+    db.commit()
+db.close()
 
 # --- PESTAÑAS ---
 tab_cem, tab_est, tab_aba, tab_alm, tab_aud = st.tabs(["🧪 Cementación", "⚡ Estimulación", "🛑 Abandono", "📦 Almacén y Costos", "📊 Auditoría"])
