@@ -21,19 +21,21 @@ def renderizar_protocolo(tipo):
     return checks, ev
 
 # --- INICIALIZACIÓN ---
-if not inspect(engine).has_table("pozos"): 
-    Base.metadata.create_all(bind=engine)
-
-# FORZAR INICIALIZACIÓN DE DATOS (Vital para que el Almacén tenga opciones)
+if not inspect(engine).has_table("pozos"): Base.metadata.create_all(bind=engine)
 db = SessionLocal()
-if db.query(AlmacenMendoza).count() == 0:
+if db.query(AlmacenMendoza).count() == 0: 
     PumpingService.inicializar_almacen_si_vacio(db)
-    db.commit() # Aseguramos que los datos se guarden
-
-if db.query(Pozo).count() == 0:
-    db.add(Pozo(nombre_pozo="Pozo Operativo 01", profundidad_md_ft=5000, tipo_pozo="Desarrollo"))
     db.commit()
 db.close()
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.image("jota_ene.jpg", width=140)
+    st.title("⚙️ Jota Energy")
+    db_s = SessionLocal()
+    for s in db_s.query(AlmacenMendoza).all():
+        st.metric(s.item_nombre, f"{s.stock_actual:,.1f} {s.unidad}")
+    db_s.close()
 
 # --- PESTAÑAS ---
 tab_cem, tab_est, tab_aba, tab_alm, tab_aud = st.tabs(["🧪 Cementación", "⚡ Estimulación", "🛑 Abandono", "📦 Almacén y Costos", "📊 Auditoría"])
@@ -58,10 +60,40 @@ with tab_cem:
                 st.success("Registrado.")
             db.close()
 
+with tab_est:
+    st.subheader("⚡ Estimulación y Fractura")
+    lbs_arena = st.number_input("Carga de Apuntalante (lbs)", 50000.0)
+    ing_est = st.text_input("Ingeniero a cargo", key="est_ing")
+    checks, ev = renderizar_protocolo("FRACTURA")
+    if st.button("Ejecutar Estimulación"):
+        if not all(checks.values()): st.warning("Completa los protocolos.")
+        else:
+            db = SessionLocal()
+            log = PumpingService.verificar_y_descontar_arena(db, lbs_arena, "Pozo Operativo 01")
+            if log["status"] == "OK":
+                db.add(Intervencion(tipo_servicio="FRACTURA", ingeniero_a_cargo=ing_est, resumen_calculo=json.dumps(ev), estado="FINALIZADO"))
+                db.commit()
+                st.success("Fractura registrada.")
+            db.close()
+
+with tab_aba:
+    st.subheader("🛑 Abandono de Pozos (P&A)")
+    ing_aba = st.text_input("Ingeniero a cargo", key="aba_ing")
+    checks, ev = renderizar_protocolo("ABANDONO")
+    if st.button("Ejecutar Abandono"):
+        if not all(checks.values()): st.warning("Completa los protocolos.")
+        else:
+            db = SessionLocal()
+            db.add(Intervencion(tipo_servicio="ABANDONO", ingeniero_a_cargo=ing_aba, resumen_calculo=json.dumps(ev), estado="FINALIZADO"))
+            db.commit()
+            st.success("Abandono registrado.")
+            db.close()
+
 with tab_alm:
     st.subheader("📦 Gestión de Inventario y Costos")
     db = SessionLocal()
-    item = st.selectbox("Item", [i.item_nombre for i in db.query(AlmacenMendoza).all()])
+    items = db.query(AlmacenMendoza).all()
+    item = st.selectbox("Item", [i.item_nombre for i in items])
     cant = st.number_input("Cantidad", 0.0)
     costo = st.number_input("Costo Unitario ($)", 0.0)
     tipo = st.radio("Movimiento", ["INGRESO", "EGRESO"])
@@ -72,6 +104,7 @@ with tab_alm:
     db.close()
 
 with tab_aud:
+    st.subheader("📊 Auditoría de Datos")
     db = SessionLocal()
     for i in db.query(Intervencion).all():
         st.write(f"**{i.tipo_servicio}** | Ing: {i.ingeniero_a_cargo} | Datos: {i.resumen_calculo}")
