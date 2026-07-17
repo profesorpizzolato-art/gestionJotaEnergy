@@ -10,7 +10,33 @@ from src.database.connection import engine, Base, SessionLocal
 from src.modules.operations.models import Pozo, Intervencion, AlmacenMendoza, HistorialAlmacen
 from src.modules.pumping.calculator import CementCalculator
 from src.modules.pumping.services import PumpingService
+from src.modules.safety.protocols import QHSEProtocolos
 
+def renderizar_protocolos(tipo_operacion):
+    st.subheader(f"📋 Protocolos Normalizados: {tipo_operacion}")
+    protocolos = QHSEProtocolos.obtener_protocolos(tipo_operacion)
+    
+    # Creamos un contenedor para las respuestas
+    checklist = {}
+    for p in protocolos:
+        checklist[p] = st.checkbox(p, key=f"check_{p}")
+        
+    return checklist
+
+# --- Ejemplo de uso en la pestaña de Cementación ---
+with tab_cem:
+    # ... (tus campos de entrada)
+    
+    # Generamos los protocolos dinámicos
+    check_results = renderizar_protocolos("CEMENTACION")
+    
+    if st.button("Ejecutar Cementación"):
+        # Validamos que todo esté marcado
+        if not all(check_results.values()):
+            st.warning("⚠️ Debes completar todos los protocolos de seguridad antes de continuar.")
+        else:
+            # Aquí iría tu lógica de registro de intervención
+            st.success("Protocolos validados. Ejecutando operación...")
 st.set_page_config(page_title="Jota Energy - Sistema Integral", layout="wide")
 
 # Inicialización segura
