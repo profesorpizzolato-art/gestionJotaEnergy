@@ -46,7 +46,8 @@ db.close()
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.image("https://raw.githubusercontent.com/profesorpizzolato-art/gestionjotaenergy/main/logo_menfa.png", width=140)
+    # Como el archivo está en la raíz, usamos simplemente el nombre del archivo
+    st.image("jota_ene.jpg", width=140) 
     st.title("⚙️ Jota Energy")
     st.subheader("📦 Stock Real")
     db_s = SessionLocal()
