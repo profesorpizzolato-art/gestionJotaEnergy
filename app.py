@@ -66,7 +66,42 @@ with tab_cem:
                 st.rerun()
             else: st.error(log["msg"])
             db.close()
+with tab_est:
+    st.subheader("⚡ Estimulación y Fractura")
+    lbs_arena = st.number_input("Carga de Apuntalante (lbs)", value=50000.0, key="est_lbs")
+    ing_est = st.text_input("Ingeniero a cargo", key="est_ing")
+    
+    if st.button("Ejecutar Estimulación"):
+        db = SessionLocal()
+        try:
+            # Usamos tu función de servicio original para descontar la arena
+            log = PumpingService.verificar_y_descontar_arena(db, lbs_arena, "Pozo Operativo 01")
+            if log["status"] == "OK":
+                nueva = Intervencion(pozo_id=1, tipo_servicio="FRACTURA", ingeniero_a_cargo=ing_est, estado="FINALIZADO")
+                db.add(nueva)
+                db.commit()
+                st.success("Fractura registrada y stock descontado.")
+                st.rerun()
+            else:
+                st.error(log["msg"])
+        finally:
+            db.close()
 
+with tab_aba:
+    st.subheader("🛑 Abandono de Pozos (P&A)")
+    herm = st.checkbox("Certificación de Hermeticidad")
+    ing_aba = st.text_input("Ingeniero a cargo", key="aba_ing")
+    
+    if st.button("Ejecutar Abandono"):
+        db = SessionLocal()
+        try:
+            nueva = Intervencion(pozo_id=1, tipo_servicio="ABANDONO", ingeniero_a_cargo=ing_aba, chk_hermeticidad=herm, estado="FINALIZADO")
+            db.add(nueva)
+            db.commit()
+            st.success("Protocolo de abandono finalizado.")
+            st.rerun()
+        finally:
+            db.close()
 with tab_aud:
     st.subheader("📊 Auditoría de Datos")
     db = SessionLocal()
