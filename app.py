@@ -125,3 +125,20 @@ with tab_aud:
             st.write(f"**Evidencia:** {ev}")
     db.close()
     
+with tab_alm: # Agrega esta pestaña en st.tabs
+    st.subheader("📦 Gestión de Inventario")
+    col1, col2 = st.columns(2)
+    with col1:
+        item = st.selectbox("Item", [i.item_nombre for i in db.query(AlmacenMendoza).all()])
+        cant = st.number_input("Cantidad", value=0.0)
+    with col2:
+        tipo = st.radio("Tipo de Movimiento", ["INGRESO", "EGRESO"])
+        ref = st.text_input("Referencia / Remito")
+        
+        if st.button("Confirmar Movimiento"):
+            res = InventoryManager.registrar_movimiento(db, item, cant, tipo, ref)
+            if res["status"] == "OK":
+                st.success("Movimiento registrado con éxito.")
+                st.rerun()
+            else:
+                st.error(res["msg"])
