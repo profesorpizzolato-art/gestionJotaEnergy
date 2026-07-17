@@ -12,12 +12,17 @@ from src.modules.inventory.manager import InventoryManager
 
 st.set_page_config(page_title="Jota Energy - Sistema Integral", layout="wide")
 
-# --- FUNCIONES ---
 def renderizar_protocolo(tipo):
     st.subheader(f"📋 Protocolos: {tipo}")
-    checks = {p: st.checkbox(p, key=f"{tipo}_{p}") for p in QHSEProtocolos.obtener_protocolos(tipo)}
+    # Usamos el 'tipo' para que las keys de los checkboxes sean únicas
+    checks = {p: st.checkbox(p, key=f"chk_{tipo}_{p}") for p in QHSEProtocolos.obtener_protocolos(tipo)}
+    
     col1, col2 = st.columns(2)
-    ev = {"presion": col1.number_input("PSI", 0.0), "obs": col2.text_area("Notas")}
+    # AÑADIMOS KEY ÚNICA a los inputs usando el 'tipo'
+    ev = {
+        "presion": col1.number_input("PSI", 0.0, key=f"psi_{tipo}"), 
+        "obs": col2.text_area("Notas", key=f"notas_{tipo}")
+    }
     return checks, ev
 
 # --- INICIALIZACIÓN ---
